@@ -171,8 +171,8 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
         "sep": sep,
     }, None
 
-_RE_FENCE = re.compile(
-    r"^\s*```(?:html|HTML|htm|xml)?\s*\n(?P<body>.*?)(?:\n```)\s*$",
+_RE_WHOLE_FENCE = re.compile(
+    r"^\s*```(?:\s*(?P<lang>[a-zA-Z0-9_-]+))?\s*\n(?P<body>.*)\n```\s*$",
     re.DOTALL,
 )
 
@@ -181,20 +181,21 @@ def _strip_markdown_fences(s: str) -> str:
         return ""
     t = s.strip()
 
-    # 典型: ```html ... ```
-    m = _RE_FENCE.match(t)
+    # 「全文が1つの ```...``` で包まれている」場合だけ剥がす
+    m = _RE_WHOLE_FENCE.match(t)
     if m:
-        return (m.group("body") or "").strip()
+        body = (m.group("body") or "").strip()
+        lang = (m.group("lang") or "").lower()
 
-    # まれ: ``` だけ付く / 末尾だけ ``` などの雑なケース
-    # 先頭の ```xxx 行を1行だけ落とす
-    if t.startswith("```"):
-        t = re.sub(r"^\s*```[^\n]*\n", "", t, count=1)
-    # 末尾の ``` を落とす
-    t = re.sub(r"\n```(?:\s*)$", "", t)
+        # 任意：HTMLっぽくない言語のときは剥がさない（保守的）
+        # 例: json / python が来たらそのまま返す
+        if lang and lang not in ("html", "htm", "xml"):
+            return t
 
-    return t.strip()
+        return body
 
+    # それ以外は何もしない（消しすぎ防止）
+    return t
 
 
 def _generate_html(question: str, answer: str, cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
