@@ -1,0 +1,54 @@
+name: Anki Add-on CI + Release ZIP
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    if: github.ref_type != 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Syntax check
+        run: python -m compileall .
+
+  release_zip:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make zip (addon files only)
+        run: |
+          set -e
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          TAG_NAME="${GITHUB_REF_NAME}"
+          ZIP_NAME="${REPO_NAME}-${TAG_NAME}.zip"
+
+          zip -r "$ZIP_NAME" . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x "**/__pycache__/*" \
+            -x "**/*.pyc" \
+            -x "screenshots/*" \
+            -x ".gitignore" \
+            -x "README.md" \
+            -x "LICENSE"
+
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release and upload zip
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
