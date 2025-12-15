@@ -1,56 +1,49 @@
 # AI Card Explainer
 
-AI Card Explainer automatically generates concise, high-quality explanations for flashcards using large language models (OpenAI or Google Gemini). It is designed especially for medical, nursing, and life-science students who want clean, exam-oriented explanations without unnecessary verbosity.
+AnkiWeb: https://ankiweb.net/shared/by-author/2117859718
+
+AI Card Explainer automatically generates concise, high-quality explanations for flashcards using large language models (OpenAI or Google Gemini). Designed for medical, nursing, and life-science students who want clean, exam-oriented explanations.
 
 ## Features
-- Generate concise explanations for card content using AI.
-- Supports OpenAI and Google Gemini (or other configured providers).
-- Options to keep explanations short (exam-style) or more detailed.
-- Insert generated explanations into a target field or show them on demand.
+- Generates exam-focused explanations per-card
+- Customizable prompt templates and length limits
+- Supports single-note and batch generation
+- Writes explanations into a target field without altering templates
 
 ## Requirements
-- Anki 2.1+
-- API key for the chosen AI provider (unless using local fallback)
+- API key for selected AI provider (OpenAI, Gemini, etc.)
+- Internet connection
 
 ## Installation
-1. Clone or download the add-on.
-2. Copy it into the add-ons folder (Tools → Add-ons → Open Add-ons Folder).
+1. Tools → Add-ons → Open Add-ons Folder.
+2. Place the add-on folder into `addons21/`.
 3. Restart Anki.
 
 ## Usage
-- Select notes in the Browser and run “Generate Explanations”.
-- Choose the target field where explanations should be stored (e.g., “Explanation”).
-- Configure tone/length options before generation.
+- Tools → AI Explainer → Generate explanation for selected notes.
+- Configure which field to write to and the prompt template in settings.
 
 ## Configuration
-Example settings:
-- Provider: openai / gemini
-- Target field name: Explanation
-- Tone: concise / detailed
-- Max tokens / length limit
+`config.json`:
+- provider, model, api_key location
+- source_field, target_field
+- prompt_template, max_tokens
 
-Example config snippet:
+Important sample:
 ```json
 {
   "provider": "openai",
+  "model": "gpt-4o-mini",
   "target_field": "Explanation",
-  "tone": "concise"
+  "prompt_template": "Provide a concise exam-style explanation..."
 }
 ```
 
-## Privacy & Best Practices
-- Review generated text before applying to important decks — AI output can occasionally be incorrect.
-- Do not send PHI or highly-sensitive data to cloud providers unless permitted by policy.
+## Privacy & Safety
+Do not send protected health information (PHI) or other sensitive data to third-party AI services.
 
-## Troubleshooting
-- If generation fails, verify API key and network access.
-- If results are verbose or off-topic, adjust prompt settings or tone.
-
-## Development
-- Contributions and issue reports are welcome — include sample note structure when filing a bug.
+## Issues & Support
+Provide sample cards and desired output style when opening issues.
 
 ## License
-MIT License — see LICENSE file.
-
-## Contact
-Author: yuwayanagitani
+See LICENSE.
