@@ -50,11 +50,11 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         )
 
         lines = []
-        lines.append("1. 最初に1文で『定義または全体像』を簡潔にまとめる。")
+        lines.append("1. 最初に『定義または全体像』を簡潔にまとめる。")
         if style in ("definition_and_mechanism", "full"):
-            lines.append("2. 続けて、機序・病態生理・原因となるメカニズムを2〜3行で説明する。")
+            lines.append("2. 続けて、機序・病態生理・原因となるメカニズムを説明する。")
         if style == "full":
-            lines.append("3. 臨床的ポイントを1〜2行で触れる。")
+            lines.append("3. 臨床的ポイントに触れる。")
         lines.append(f"文字数の目安: 約 {target_len} 文字。")
 
         user_prompt = (
@@ -63,7 +63,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"【模範解答】\n{answer}\n\n"
             "出力条件:\n"
             + "\n".join(lines)
-            + "\nHTML形式（<p>...</p>, <ul><li>...</li></ul>）で返してください。\n"
+            + "\nHTML形式のみを返してください。\n"
         )
     else:
         # English
@@ -72,11 +72,11 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         )
 
         lines = []
-        lines.append("1. One line definition or overview.")
+        lines.append("1. Summarize definition or overview.")
         if style in ("definition_and_mechanism", "full"):
-            lines.append("2. Mechanism/pathophysiology in 2–3 lines.")
+            lines.append("2. Describe mechanism/pathophysiology.")
         if style == "full":
-            lines.append("3. Optional clinical notes (1–2 lines).")
+            lines.append("3. Optional clinical notes.")
         lines.append(f"Target length: ~{target_len} characters.")
 
         user_prompt = (
@@ -84,7 +84,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"Question:\n{question}\n\n"
             f"Answer:\n{answer}\n\n"
             + "\n".join(lines)
-            + "\nReturn HTML only.\n"
+            + "\nReturn HTML ONLY.\n"
         )
 
     return system_prompt, user_prompt
