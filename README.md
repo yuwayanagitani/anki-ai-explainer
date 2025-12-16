@@ -1,181 +1,117 @@
-# AI Card Explainer (Anki Add-on)
+# AI Card Explainer
 
-AI Card Explainer generates a **concise explanation** for an Anki card using an AI model, and writes it into an **Explanation** field (HTML output).
-
-It is built for medical / biology / nursing study workflows, where you want a short “why/how” explanation on the back of the card—without manually writing it every time.
-
----
-
-## What it does
-
-For a given note, the add-on:
-
-1. Reads **Question** and **Answer** fields from the note
-2. Sends them to an AI provider (OpenAI or Gemini)
-3. Receives a short explanation (HTML)
-4. Writes that HTML into your configured **Explanation field**
-
-You can run it:
-- for the **current card in the Reviewer**
-- for **many notes at once** using a search query
+**AI Card Explainer** is an Anki add-on that automatically generates **concise, high-quality explanations** for your flashcards using **large language models** (OpenAI or Google Gemini).  
+It’s designed especially for **medical, nursing, life-science students**, and anyone who wants clean explanations without verbosity. :contentReference[oaicite:0]{index=0}
 
 ---
 
-## How to use
+## 🔗 AnkiWeb Page
 
-### 1) Generate for the current review card
+This add-on is also available on **AnkiWeb**:
 
-You can generate an explanation while reviewing:
+👉 https://ankiweb.net/shared/info/1870119736
 
-- **Reviewer “More…” menu** → `Generate AI Explanation (AI Card Explainer)`
-- **Keyboard shortcut** (default: `Ctrl+Shift+L`)
-
-After generation, the add-on attempts to redraw the current card so you can see the explanation immediately. citeturn2view0
+Please install from AnkiWeb for the easiest setup and automatic updates.
 
 ---
 
-### 2) Batch-generate using a search query
+## 🎯 Features
 
-Menu item:
-- **Tools** → `AI Card Explainer: generate for search results`
-
-Flow:
-1. You enter an Anki search query (default is the current deck, like `deck:"<current deck>"`)
-2. The add-on finds matching notes
-3. It generates explanations in the background
-4. It reports how many notes were generated / skipped / errored
-
-A safety limit is applied:
-- `05_max_notes_per_run` (default: 50) citeturn2view0
+- Automatically generates explanations from your card’s Question + Answer text. :contentReference[oaicite:1]{index=1}  
+- Supports batch generation using any Anki search query. :contentReference[oaicite:2]{index=2}  
+- Configurable provider: **OpenAI** or **Google Gemini**. :contentReference[oaicite:3]{index=3}  
+- Customizable output style and length. :contentReference[oaicite:4]{index=4}  
+- HTML formatting support for rich explanation rendering in cards. :contentReference[oaicite:5]{index=5}  
 
 ---
 
-## Installation
+## 🚀 How It Works
 
-### Option 1: AnkiWeb (recommended)
-Install via the usual Anki add-on flow and restart Anki.
+1. Reads the **Question + Answer** fields from a note. :contentReference[oaicite:6]{index=6}  
+2. Sends the text to the selected **AI provider**. :contentReference[oaicite:7]{index=7}  
+3. Receives a concise explanation (HTML). :contentReference[oaicite:8]{index=8}  
+4. Writes the explanation into your configured **Explanation field**. :contentReference[oaicite:9]{index=9}  
 
-### Option 2: GitHub / manual
-Place the add-on folder into your Anki `addons21` directory, then restart Anki.
-
----
-
-## Setup: API keys
-
-AI Card Explainer needs an API key for the provider you select.
-
-The add-on can read keys from:
-- **Add-on config**, or
-- **Environment variables** (fallback)
-
-Environment variable defaults:
-- OpenAI: `OPENAI_API_KEY`
-- Gemini: `GEMINI_API_KEY` citeturn2view0
-
-If no key is available, it will not run and will show a message like “API key not set.” citeturn2view0
+Behind the scenes, this pattern fits within modern AI-powered workflows for **spaced repetition learning** by helping you understand *why* answers are correct, not just *what* they are. :contentReference[oaicite:10]{index=10}
 
 ---
 
-## Configuration
+## 🚧 Installation
 
-Open:
-- **Tools → Add-ons → (AI Card Explainer) → Config**
+### ⬇️ From AnkiWeb (Recommended)
 
-This add-on registers a **custom settings dialog** (via `setConfigAction`) when available. citeturn2view0
+1. Open **Anki** → Tools → Add-Ons → Browse & Install.  
+2. Search for **AI Card Explainer** and install.  
+3. Restart Anki.
 
-### Provider (01_*)
+### 📦 From GitHub
 
-- `01_provider`  
-  `openai` or `gemini`
-
-OpenAI:
-- `01_openai_api_key` (optional if using env var)
-- `01_openai_model` (default: `gpt-4o-mini`)
-
-Gemini:
-- `01_gemini_api_key` (optional if using env var)
-- `01_gemini_model` (default: `gemini-2.5-flash-lite`) citeturn2view0
+1. Clone or download this repository into `~/.local/share/Anki2/addons21/anki-ai-explainer`.  
+2. Restart Anki.
 
 ---
 
-### Field mapping (02_*)
+## 🔑 Setup — API Keys
 
-- `02_question_field` (default: `Front`)
-- `02_answer_field` (default: `Back`)
-- `02_explanation_field` (default: `Explanation`) citeturn2view0
+This add-on requires API keys for your chosen provider:
 
----
+| Provider | Env Var | Config Option |
+|----------|---------|----------------|
+| OpenAI | `OPENAI_API_KEY` | `01_openai_api_key` |
+| Gemini | `GEMINI_API_KEY` | `01_gemini_api_key` | :contentReference[oaicite:11]{index=11}
 
-### Output language & style (03_*)
-
-- `03_language`  
-  `ja` for Japanese, otherwise English
-
-- `03_explanation_style`  
-  - `definition_and_mechanism` (default)
-  - `full`
-  - (and other values if your config GUI exposes them)
-
-- `03_target_length_chars`  
-  Target length for the explanation (clamped to 80–800 chars) citeturn2view0
-
-Output format:
-- The model is instructed to return **HTML only**. citeturn2view0
+If no key is found, the add-on will show an error message.
 
 ---
 
-### Behavior when an explanation already exists (04_*)
+## ⚙️ Configuration
 
-- `04_on_existing_behavior`
-  - `skip` (default): do nothing if Explanation already has content
-  - `append`: add the new explanation after the existing text
-  - otherwise: overwrite (treated as “replace” behavior)
+Open:  
+**Tools** → **Add-Ons** → **AI Card Explainer** → **Config**
 
-- `04_append_separator`  
-  Separator used for append (default is a horizontal rule style block) citeturn2view0
+### Key Config Options
 
----
-
-### Review / batch options (05_*)
-
-- `05_review_shortcut`  
-  Default: `Ctrl+Shift+L`
-
-- `05_max_notes_per_run`  
-  Default: `50` citeturn2view0
+- `01_provider`: `"openai"` or `"gemini"`  
+- Model selection (e.g., `gpt-4o-mini`, `gemini-2.5-flash-lite`)  
+- Field mapping: question, answer, explanation fields  
+- Output language, style, and target length  
+- Behavior on existing explanations (skip / append / replace) :contentReference[oaicite:12]{index=12}
 
 ---
 
-## Notes on networking
+## 🧪 Usage
 
-Requests are made with `requests` (Anki’s bundled environment).  
-Timeouts are set to 40 seconds per request. citeturn2view0
+### 🔹 Single Card
 
----
+While reviewing a card:  
+**Reviewer → More… → Generate AI Explanation (AI Card Explainer)**  
+or use shortcut: **Ctrl + Shift + L**. :contentReference[oaicite:13]{index=13}
 
-## Troubleshooting
+### 🔹 Batch
 
-### “No current card.”
-You triggered generation outside the Reviewer, or no card is loaded.
-
-### “Skipped: Explanation already exists.”
-Your `04_on_existing_behavior` is set to `skip` and the Explanation field is not empty.
-
-### “API key not set.”
-Set the key in config (`01_*_api_key`) or as an environment variable (`OPENAI_API_KEY` / `GEMINI_API_KEY`), then restart Anki.
-
-### “API error: …”
-This is returned when the provider request fails (network error, invalid key, rate limits, etc.). The add-on prints a traceback to help debugging. citeturn2view0
+**Tools → AI Card Explainer: generate for search results**  
+Enter an Anki search (e.g., `deck:"Biology 2025"`) to generate explanations in bulk. :contentReference[oaicite:14]{index=14}
 
 ---
 
-## Privacy
+## ⚠️ Privacy and Safety
 
-This add-on sends your card’s **Question + Answer** text to an external AI provider (OpenAI or Google Gemini) when enabled.  
-Do not use it with sensitive or private data unless you understand the provider’s data handling policies.
+This add-on sends your card’s text to external services (OpenAI/Gemini).  
+**Avoid using private/sensitive data** unless you understand the provider’s privacy policy. :contentReference[oaicite:15]{index=15}
 
 ---
 
-## License
+## 🛠 Troubleshooting
 
-See the repository’s LICENSE file.
+| Issue | Solution |
+|-------|----------|
+| “No current card.” | Trigger generation during review. |
+| “Explanation already exists.” | Adjust overwrite behavior in config. |
+| “API key not set.” | Set API key in config or env vars. |
+| API errors | Check network, rate limits, model settings. | :contentReference[oaicite:16]{index=16}
+
+---
+
+## 📜 License
+
+This project is licensed under **MIT License**. :contentReference[oaicite:17]{index=17}
