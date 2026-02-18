@@ -1,117 +1,137 @@
-# AI Card Explainer
+# Anki AI Explainer
 
-**AI Card Explainer** is an Anki add-on that automatically generates **concise, high-quality explanations** for your flashcards using **large language models** (OpenAI or Google Gemini).  
-It’s designed especially for **medical, nursing, life-science students**, and anyone who wants clean explanations without verbosity. :contentReference[oaicite:0]{index=0}
+Anki add-on that generates an **HTML explanation** for the current card (or for a batch of notes) using an LLM.
 
----
+This add-on is designed to be **simple and highly generic**:
 
-## 🔗 AnkiWeb Page
+- You can write **any prompt you want** (single “User prompt”).
+- You can choose **any number of input fields** to send to the model (no hard limit).
+- The add-on enforces that the model returns **HTML only** (to paste directly into an Anki field).
+- Prompts support:
+  - `{{fields}}` : all selected fields concatenated as `FieldName:\nvalue`
+  - `{{FieldName}}` : access an individual field value directly (e.g. `{{Question}}`, `{{Answer}}`)
 
-This add-on is also available on **AnkiWeb**:
-
-👉 https://ankiweb.net/shared/info/1870119736
-
-Please install from AnkiWeb for the easiest setup and automatic updates.
-
----
-
-## 🎯 Features
-
-- Automatically generates explanations from your card’s Question + Answer text. :contentReference[oaicite:1]{index=1}  
-- Supports batch generation using any Anki search query. :contentReference[oaicite:2]{index=2}  
-- Configurable provider: **OpenAI** or **Google Gemini**. :contentReference[oaicite:3]{index=3}  
-- Customizable output style and length. :contentReference[oaicite:4]{index=4}  
-- HTML formatting support for rich explanation rendering in cards. :contentReference[oaicite:5]{index=5}  
+> The add-on intentionally does **not** provide built-in settings like language, style, or length.
+> Put those instructions in your prompt.
 
 ---
 
-## 🚀 How It Works
+## Features
 
-1. Reads the **Question + Answer** fields from a note. :contentReference[oaicite:6]{index=6}  
-2. Sends the text to the selected **AI provider**. :contentReference[oaicite:7]{index=7}  
-3. Receives a concise explanation (HTML). :contentReference[oaicite:8]{index=8}  
-4. Writes the explanation into your configured **Explanation field**. :contentReference[oaicite:9]{index=9}  
-
-Behind the scenes, this pattern fits within modern AI-powered workflows for **spaced repetition learning** by helping you understand *why* answers are correct, not just *what* they are. :contentReference[oaicite:10]{index=10}
-
----
-
-## 🚧 Installation
-
-### ⬇️ From AnkiWeb (Recommended)
-
-1. Open **Anki** → Tools → Add-Ons → Browse & Install.  
-2. Search for **AI Card Explainer** and install.  
-3. Restart Anki.
-
-### 📦 From GitHub
-
-1. Clone or download this repository into `~/.local/share/Anki2/addons21/anki-ai-explainer`.  
-2. Restart Anki.
+- Generate explanation for the **current reviewer card** (via shortcut / reviewer context menu)
+- Batch-generate explanations for notes matched by an **Anki search query** (Tools menu)
+- Flexible behavior when the destination field already has content:
+  - Skip / Overwrite / Append (with custom separator)
+- Works with either:
+  - **OpenAI** (Chat Completions API)
+  - **Google Gemini** (Generative Language API)
 
 ---
 
-## 🔑 Setup — API Keys
+## Installation
 
-This add-on requires API keys for your chosen provider:
+### From AnkiWeb
+Install via AnkiWeb (recommended).  
+(AnkiWeb URL will be added after publishing.)
 
-| Provider | Env Var | Config Option |
-|----------|---------|----------------|
-| OpenAI | `OPENAI_API_KEY` | `01_openai_api_key` |
-| Gemini | `GEMINI_API_KEY` | `01_gemini_api_key` | :contentReference[oaicite:11]{index=11}
-
-If no key is found, the add-on will show an error message.
-
----
-
-## ⚙️ Configuration
-
-Open:  
-**Tools** → **Add-Ons** → **AI Card Explainer** → **Config**
-
-### Key Config Options
-
-- `01_provider`: `"openai"` or `"gemini"`  
-- Model selection (e.g., `gpt-4o-mini`, `gemini-2.5-flash-lite`)  
-- Field mapping: question, answer, explanation fields  
-- Output language, style, and target length  
-- Behavior on existing explanations (skip / append / replace) :contentReference[oaicite:12]{index=12}
+### Manual install (GitHub)
+1. Download this repository as a zip
+2. Extract into your Anki add-ons folder:
+   - `Tools → Add-ons → View Files`
+3. Restart Anki
 
 ---
 
-## 🧪 Usage
+## Quick Start
 
-### 🔹 Single Card
-
-While reviewing a card:  
-**Reviewer → More… → Generate AI Explanation (AI Card Explainer)**  
-or use shortcut: **Ctrl + Shift + L**. :contentReference[oaicite:13]{index=13}
-
-### 🔹 Batch
-
-**Tools → AI Card Explainer: generate for search results**  
-Enter an Anki search (e.g., `deck:"Biology 2025"`) to generate explanations in bulk. :contentReference[oaicite:14]{index=14}
-
----
-
-## ⚠️ Privacy and Safety
-
-This add-on sends your card’s text to external services (OpenAI/Gemini).  
-**Avoid using private/sensitive data** unless you understand the provider’s privacy policy. :contentReference[oaicite:15]{index=15}
+1. Open add-on settings: `Tools → Add-ons → Anki AI Explainer → Config`
+2. Set your provider and API key
+3. Choose:
+   - **Input fields** you want the model to read (e.g. `Question`, `Answer`, `Extra`)
+   - **Explanation field** to write the output to (default: `Explanation`)
+4. Write your **User prompt**
+5. Generate explanations:
+   - In review: press the shortcut (default `Ctrl+Shift+L`)
+   - Or: open reviewer “More…” menu → *Generate AI Explanation*
+   - Or: Tools → *AI Card Explainer: generate for search results*
 
 ---
 
-## 🛠 Troubleshooting
+## Prompt Placeholders
 
-| Issue | Solution |
-|-------|----------|
-| “No current card.” | Trigger generation during review. |
-| “Explanation already exists.” | Adjust overwrite behavior in config. |
-| “API key not set.” | Set API key in config or env vars. |
-| API errors | Check network, rate limits, model settings. | :contentReference[oaicite:16]{index=16}
+### `{{fields}}`
+Expands to all selected input fields, concatenated in order:
+
+Example expansion:
+```
+Question:
+What is ATP?
+
+Answer:
+Adenosine triphosphate
+```
+
+### `{{FieldName}}`
+Expands to the value of the individual field.
+
+Example:
+- `{{Question}}` → value of the `Question` field
+- `{{Answer}}` → value of the `Answer` field
+
+If a placeholder refers to a field that is missing/unavailable, it is replaced with an empty string.
 
 ---
 
-## 📜 License
+## Example Prompts
 
-This project is licensed under **MIT License**. :contentReference[oaicite:17]{index=17}
+### Minimal (recommended)
+```
+Explain the following Anki note in concise HTML.
+
+{{fields}}
+```
+
+### Q/A style
+```
+<p><b>Q:</b> {{Question}}</p>
+<p><b>A:</b> {{Answer}}</p>
+
+Requirements:
+- HTML only
+- No greetings
+- Use <ul><li> for lists
+- Highlight key words with <b>
+```
+
+---
+
+## Settings
+
+Key settings (in `config.json`):
+
+- `01_provider`: `openai` or `gemini`
+- `01_openai_api_key`, `01_openai_model`
+- `01_gemini_api_key`, `01_gemini_model`
+- `02_input_fields`: array of field names to read (order matters)
+- `02_explanation_field`: field name to write HTML output into
+- `03_user_prompt`: your prompt template
+- `04_on_existing_behavior`: `skip` / `overwrite` / `append`
+- `04_append_separator`: used when appending
+- `05_max_notes_per_run`: batch limit
+- `05_review_shortcut`: reviewer shortcut
+
+---
+
+## Notes / Safety
+
+- The add-on requests the model to return **HTML only**.
+  Some models may still wrap output in Markdown fences (```html).  
+  The add-on attempts to strip a single surrounding fence to reduce friction.
+- Field values are passed to the model **as-is** (including any HTML contained in the note fields).
+  Do not include sensitive data in notes if you do not want to send it to your provider.
+
+---
+
+## License
+
+MIT License
