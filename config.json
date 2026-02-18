@@ -8,7 +8,7 @@
   "02_input_fields": ["Front", "Back"],
   "02_explanation_field": "Explanation",
 
-  "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.",
+  "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.\n\nNote: You can also use individual field placeholders like {{Front}} or {{Back}} instead of {{fields}}.",
 
   "04_on_existing_behavior": "append",
   "04_append_separator": "\n<hr>\n",

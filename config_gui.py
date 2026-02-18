@@ -20,7 +20,7 @@ DEFAULT_CONFIG: AddonConfig = {
     "02_input_fields": ["Front", "Back"],
     "02_explanation_field": "Explanation",
 
-    "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.",
+    "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.\n\nNote: You can also use individual field placeholders like {{Front}} or {{Back}} instead of {{fields}}.",
 
     "04_on_existing_behavior": "append",
     "04_append_separator": "\n<hr>\n",
@@ -115,7 +115,7 @@ class ExplainerConfigDialog(QDialog):
         lay_fields = QVBoxLayout(tab_fields)
 
         # Input fields section
-        input_label = QLabel("Input fields (read in order, concatenated as {{fields}} placeholder):")
+        input_label = QLabel("Input fields (read in order, concatenated as {{fields}} placeholder, also available as individual {{FieldName}} placeholders):")
         lay_fields.addWidget(input_label)
 
         fields_hbox = QHBoxLayout()
@@ -159,14 +159,15 @@ class ExplainerConfigDialog(QDialog):
         lay_prompt = QVBoxLayout(tab_prompt)
 
         prompt_label = QLabel(
-            "User prompt (use {{fields}} placeholder for field contents):"
+            "User prompt (use {{fields}} for all field contents, or {{FieldName}} for individual fields like {{Front}}, {{Back}}):"
         )
         lay_prompt.addWidget(prompt_label)
 
         self.user_prompt = QTextEdit()
         self.user_prompt.setMinimumHeight(200)
         self.user_prompt.setPlaceholderText(
-            "Enter your custom prompt here. Use {{fields}} to insert the concatenated field contents."
+            "Enter your custom prompt here. Use {{fields}} to insert all field contents, "
+            "or {{FieldName}} for individual fields (e.g., {{Question}}, {{Answer}})."
         )
         lay_prompt.addWidget(self.user_prompt)
 

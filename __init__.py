@@ -32,11 +32,11 @@ def cfg_get(cfg: dict, key: str, default=None):
 # Prompt building
 # ==============================
 
-def _build_prompts(fields_text: str, cfg: AddonConfig) -> tuple[str, str]:
+def _build_prompts(fields_text: str, fields_map: dict[str, str], cfg: AddonConfig) -> tuple[str, str]:
     """
     Build system and user prompts with the new simplified approach.
     - System prompt: enforces HTML-only output
-    - User prompt: uses user-defined template with {{fields}} substitution
+    - User prompt: uses user-defined template with {{fields}} and {{FieldName}} substitution
     """
     # System prompt enforces HTML output only
     system_prompt = (
@@ -58,6 +58,18 @@ def _build_prompts(fields_text: str, cfg: AddonConfig) -> tuple[str, str]:
     
     # Substitute {{fields}} placeholder with actual field content
     user_prompt = user_prompt_template.replace("{{fields}}", fields_text)
+    
+    # Substitute individual {{FieldName}} placeholders with their values
+    # Use regex to find all {{...}} patterns
+    import re
+    placeholder_pattern = re.compile(r'\{\{([^}]+)\}\}')
+    
+    def replace_placeholder(match):
+        field_name = match.group(1)
+        # Return the field value if it exists, otherwise empty string
+        return fields_map.get(field_name, "")
+    
+    user_prompt = placeholder_pattern.sub(replace_placeholder, user_prompt)
     
     return system_prompt, user_prompt
 
@@ -106,7 +118,7 @@ def _generate_for_note(note) -> tuple[Optional[str], Optional[str]]:
     job, err = _prepare_note_job_from_note(note, cfg)
     if err:
         return None, err
-    html, err2 = _generate_html(job["fields_text"], cfg)
+    html, err2 = _generate_html(job["fields_text"], job["fields_map"], cfg)
     if err2:
         return None, err2
     ok, err3 = _apply_html_to_note(job["nid"], job["e_field"], html, job["behavior"], job["sep"])
@@ -117,6 +129,7 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
     """
     Prepare job data from a note using the new multi-field approach.
     Reads fields specified in 02_input_fields and concatenates them in "FieldName:\nvalue" format.
+    Also creates a fields_map for individual field placeholder replacement.
     """
     input_fields = cfg_get(cfg, "02_input_fields", ["Front", "Back"])
     if not isinstance(input_fields, list) or not input_fields:
@@ -126,16 +139,21 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
 
     # Read all input fields and concatenate
     field_parts = []
+    fields_map = {}  # Map of field name to field value
+    
     for field_name in input_fields:
         try:
             field_value = (note[field_name] or "").strip()
+            # Add to fields_map even if empty (for consistent placeholder behavior)
+            fields_map[field_name] = field_value
+            
             if field_value:
                 # Note: Field values are passed as-is to the LLM without sanitization.
                 # This preserves HTML tags, formatting, and special characters that
                 # may be important context for generating explanations.
                 field_parts.append(f"{field_name}:\n{field_value}")
         except KeyError:
-            # Field doesn't exist in this note type, skip it
+            # Field doesn't exist in this note type, don't add to map
             pass
     
     # If all fields are empty, we can't generate anything
@@ -161,6 +179,7 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
         "nid": int(note.id),
         "e_field": e_field,
         "fields_text": fields_text,
+        "fields_map": fields_map,
         "behavior": behavior,
         "sep": sep,
     }, None
@@ -192,8 +211,8 @@ def _strip_markdown_fences(s: str) -> str:
     return t
 
 
-def _generate_html(fields_text: str, cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
-    system_prompt, user_prompt = _build_prompts(fields_text, cfg)
+def _generate_html(fields_text: str, fields_map: dict[str, str], cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
+    system_prompt, user_prompt = _build_prompts(fields_text, fields_map, cfg)
     provider = cfg_get(cfg, "01_provider", "openai")
     if provider == "openai":
         api_key = cfg_get(cfg, "01_openai_api_key") or os.getenv("OPENAI_API_KEY")
@@ -259,7 +278,7 @@ def _generate_for_current_card() -> None:
         return
 
     def worker():
-        return _generate_html(job["fields_text"], cfg)
+        return _generate_html(job["fields_text"], job["fields_map"], cfg)
 
     def on_done(fut):
         try:
@@ -335,7 +354,7 @@ def _on_tools_generate_with_search() -> None:
     def worker():
         results = []
         for job in jobs:
-            html, err = _generate_html(job["fields_text"], cfg)
+            html, err = _generate_html(job["fields_text"], job["fields_map"], cfg)
             results.append((job, html, err))
         return {"results": results, "total": len(target), "pre_skipped": pre_skipped}
 
