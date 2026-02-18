@@ -32,103 +32,33 @@ def cfg_get(cfg: dict, key: str, default=None):
 # Prompt building
 # ==============================
 
-def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, str]:
-    # --- Domain (new) with backward compat ---
-    # new key: 03_domain = "medical" | "general"
-    # old key: 03_audience (legacy) - used only if 03_domain is missing
-    domain = cfg_get(cfg, "03_domain", None)
-    if not domain:
-        domain = cfg_get(cfg, "03_audience", "general")
-    domain = str(domain).lower().strip()
-    if domain not in ("medical", "general"):
-        domain = "medical"
-
-    # --- Language ---
-    language = str(cfg_get(cfg, "03_language", "ja") or "ja").lower().strip()
-    LANG_MAP = {
-        "ja": "Japanese",
-        "en": "English",
-        "de": "German",
-        "fr": "French",
-        "es": "Spanish",
-        "zh": "Chinese",
-        "ko": "Korean",
-        "it": "Italian",
-        "pt": "Portuguese",
-        "ru": "Russian",
-        "ar": "Arabic",
-    }
-    lang_label = LANG_MAP.get(language, "English")
-
-    # --- Style / Length ---
-    style = cfg_get(cfg, "03_explanation_style", "definition_and_mechanism")
-    target_len = int(cfg_get(cfg, "03_target_length_chars", 260))
-    target_len = max(80, min(800, target_len))
-
-    # --- System prompt: domain switch (English only; output language is controlled below) ---
-    if domain == "medical":
-        system_prompt = (
-            "You are an expert medical tutor. "
-            "Write an explanation suitable for medical/health-science students. "
-            "Be accurate. Avoid unnecessary chatter."
+def _build_prompts(fields_text: str, cfg: AddonConfig) -> tuple[str, str]:
+    """
+    Build system and user prompts with the new simplified approach.
+    - System prompt: enforces HTML-only output
+    - User prompt: uses user-defined template with {{fields}} substitution
+    """
+    # System prompt enforces HTML output only
+    system_prompt = (
+        "You are a helpful tutor. "
+        "You must return your response in HTML format ONLY. "
+        "Do NOT use markdown code fences or backticks. "
+        "Do NOT wrap your response in ```html or ``` tags."
+    )
+    
+    # Get user-defined prompt template
+    user_prompt_template = cfg_get(cfg, "03_user_prompt", "")
+    if not user_prompt_template:
+        # Fallback to a simple default if not configured
+        user_prompt_template = (
+            "Please provide a clear and concise explanation for the following content:\n\n"
+            "{{fields}}\n\n"
+            "Provide an explanation that helps understand the concept."
         )
-    else:
-        system_prompt = (
-            "You are an expert tutor across many subjects. "
-            "Write an explanation suitable for learners. "
-            "Be accurate, clear, and avoid unnecessary digressions."
-        )
-
-    # --- Style instructions ---
-    lines: list[str] = []
-    lines.append("1. Summarize the definition or overall idea first.")
-
-    if style in ("definition_and_mechanism", "full"):
-        if domain == "medical":
-            lines.append("2. Describe the mechanism/pathophysiology.")
-        else:
-            lines.append("2. Explain the reasoning, cause-effect, or the key concept.")
-
-    if style == "full":
-        if domain == "medical":
-            lines.append("3. Add brief clinical notes (high-yield points).")
-        else:
-            lines.append("3. Add helpful context (examples, common pitfalls, or why it matters).")
-
-    lines.append(f"Target length: ~{target_len} characters.")
-
-    # --- User prompt: language + strict output constraints ---
-
-    q = (question or "").strip()
-    a = (answer or "").strip()
-
-    parts: list[str] = []
-    parts.append("Please write an explanation for this Anki card.")
-    parts.append("")
-
-    if q and a:
-        parts.append(f"Question:\n{q}\n")
-        parts.append(f"Answer:\n{a}\n")
-    elif q:
-        parts.append("Only the question is available (the answer field is empty or missing).")
-        parts.append(f"Question:\n{q}\n")
-        parts.append("Explain the concept being asked, and what kind of answer would be expected.")
-        parts.append("")
-    elif a:
-        parts.append("Only the answer is available (the question field is empty or missing).")
-        parts.append(f"Answer:\n{a}\n")
-        parts.append("Explain what this answer means, and typical contexts where it appears.")
-        parts.append("")
-
-    parts.append("\n".join(lines))
-    parts.append(f"\nThe output language MUST be {lang_label}.")
-    parts.append("Return HTML ONLY .")
-    parts.append("Do NOT wrap the output in markdown or code blocks.")
-    parts.append("Do NOT include ``` or ```html.")
-    parts.append(f"Keep the output around {target_len} characters.")
-
-    user_prompt = "\n".join(parts) + "\n"
-
+    
+    # Substitute {{fields}} placeholder with actual field content
+    user_prompt = user_prompt_template.replace("{{fields}}", fields_text)
+    
     return system_prompt, user_prompt
 
 
@@ -146,7 +76,6 @@ def _call_openai(api_key: str, model: str, system_prompt: str, user_prompt: str)
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 512,
     }
     r = requests.post(url, headers=headers, json=body, timeout=40)
     r.raise_for_status()
@@ -174,7 +103,7 @@ def _generate_for_note(note) -> tuple[Optional[str], Optional[str]]:
     job, err = _prepare_note_job_from_note(note, cfg)
     if err:
         return None, err
-    html, err2 = _generate_html(job["question"], job["answer"], cfg)
+    html, err2 = _generate_html(job["fields_text"], cfg)
     if err2:
         return None, err2
     ok, err3 = _apply_html_to_note(job["nid"], job["e_field"], html, job["behavior"], job["sep"])
@@ -182,39 +111,50 @@ def _generate_for_note(note) -> tuple[Optional[str], Optional[str]]:
 
 
 def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict], Optional[str]]:
-    q_field = cfg_get(cfg, "02_question_field", "Front")
-    a_field = cfg_get(cfg, "02_answer_field", "Back")
+    """
+    Prepare job data from a note using the new multi-field approach.
+    Reads fields specified in 02_input_fields and concatenates them in "FieldName:\nvalue" format.
+    """
+    input_fields = cfg_get(cfg, "02_input_fields", ["Front", "Back"])
+    if not isinstance(input_fields, list) or not input_fields:
+        input_fields = ["Front", "Back"]
+    
     e_field = cfg_get(cfg, "02_explanation_field", "Explanation")
 
-    # フィールドが存在しない場合も即スキップにせず、存在する方だけ使う
-    question = ""
-    answer = ""
-    try:
-        question = (note[q_field] or "").strip()
-    except KeyError:
-        question = ""
-    try:
-        answer = (note[a_field] or "").strip()
-    except KeyError:
-        answer = ""
-
-    # 両方空なら無理
-    if (not question) and (not answer):
-        return None, "Question and answer are both empty (or missing)."
-
+    # Read all input fields and concatenate
+    field_parts = []
+    for field_name in input_fields:
+        try:
+            field_value = (note[field_name] or "").strip()
+            if field_value:
+                field_parts.append(f"{field_name}:\n{field_value}")
+        except KeyError:
+            # Field doesn't exist in this note type, skip it
+            pass
+    
+    # If all fields are empty, we can't generate anything
+    if not field_parts:
+        return None, "All input fields are empty or missing."
+    
+    # Concatenate with double newline separator
+    fields_text = "\n\n".join(field_parts)
+    
+    # Check explanation field
     try:
         existing_raw = note[e_field] or ""
     except KeyError:
         return None, "Explanation field does not exist."
+    
     behavior = cfg_get(cfg, "04_on_existing_behavior", "skip")
     if existing_raw.strip() and behavior == "skip":
         return None, "Explanation already exists."
+    
     sep = cfg_get(cfg, "04_append_separator", "\n<hr>\n")
+    
     return {
         "nid": int(note.id),
         "e_field": e_field,
-        "question": question,
-        "answer": answer,
+        "fields_text": fields_text,
         "behavior": behavior,
         "sep": sep,
     }, None
@@ -246,8 +186,8 @@ def _strip_markdown_fences(s: str) -> str:
     return t
 
 
-def _generate_html(question: str, answer: str, cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
-    system_prompt, user_prompt = _build_prompts(question, answer, cfg)
+def _generate_html(fields_text: str, cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
+    system_prompt, user_prompt = _build_prompts(fields_text, cfg)
     provider = cfg_get(cfg, "01_provider", "openai")
     if provider == "openai":
         api_key = cfg_get(cfg, "01_openai_api_key") or os.getenv("OPENAI_API_KEY")
@@ -313,7 +253,7 @@ def _generate_for_current_card() -> None:
         return
 
     def worker():
-        return _generate_html(job["question"], job["answer"], cfg)
+        return _generate_html(job["fields_text"], cfg)
 
     def on_done(fut):
         try:
@@ -389,7 +329,7 @@ def _on_tools_generate_with_search() -> None:
     def worker():
         results = []
         for job in jobs:
-            html, err = _generate_html(job["question"], job["answer"], cfg)
+            html, err = _generate_html(job["fields_text"], cfg)
             results.append((job, html, err))
         return {"results": results, "total": len(target), "pre_skipped": pre_skipped}
 
