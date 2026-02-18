@@ -226,7 +226,19 @@ class ExplainerConfigDialog(QDialog):
     def _on_add_field(self) -> None:
         text, ok = QInputDialog.getText(self, "Add Field", "Enter field name:")
         if ok and text.strip():
-            self.input_fields_list.addItem(text.strip())
+            field_name = text.strip()
+            # Check for duplicates
+            existing_fields = []
+            for i in range(self.input_fields_list.count()):
+                item = self.input_fields_list.item(i)
+                if item:
+                    existing_fields.append(item.text())
+            
+            if field_name in existing_fields:
+                showWarning(f"Field '{field_name}' is already in the list.")
+                return
+            
+            self.input_fields_list.addItem(field_name)
 
     def _on_remove_field(self) -> None:
         current_row = self.input_fields_list.currentRow()

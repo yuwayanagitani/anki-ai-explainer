@@ -76,6 +76,9 @@ def _call_openai(api_key: str, model: str, system_prompt: str, user_prompt: str)
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.2,
+        # Note: max_tokens removed to allow model's default behavior.
+        # Users can now control response length via their custom prompt instead
+        # of having a hard-coded 512-token limit.
     }
     r = requests.post(url, headers=headers, json=body, timeout=40)
     r.raise_for_status()
@@ -127,6 +130,9 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
         try:
             field_value = (note[field_name] or "").strip()
             if field_value:
+                # Note: Field values are passed as-is to the LLM without sanitization.
+                # This preserves HTML tags, formatting, and special characters that
+                # may be important context for generating explanations.
                 field_parts.append(f"{field_name}:\n{field_value}")
         except KeyError:
             # Field doesn't exist in this note type, skip it
