@@ -37,35 +37,49 @@ All settings can be adjusted in the Config screen.
 
 ## 2. Field Settings (02_xxx)
 
-### **02_question_field**
-- Field containing the *question* text sent to the AI.
-
-### **02_answer_field**
-- Field containing the *answer* text sent to the AI.
+### **02_input_fields**
+- Array of field names to read from the note (in order).
+- These fields are concatenated and sent to the AI.
+- Default: `["Front", "Back"]`
+- Example: `["Question", "Answer", "Context"]`
 
 ### **02_explanation_field**
 - The field where the generated explanation will be written.
+- Default: `"Explanation"`
 
 ---
 
-## 3. Explanation Style (03_xxx)
+## 3. User Prompt (03_xxx)
 
-### **03_language**
-- `"ja"` → Explanation generated in Japanese  
-- `"en"` → Explanation generated in English
+### **03_user_prompt**
+- The prompt template sent to the AI model.
+- Supports placeholders:
+  - `{{fields}}` - Replaced with all input fields concatenated (e.g., "Front:\nvalue\n\nBack:\nvalue")
+  - `{{FieldName}}` - Replaced with individual field values (e.g., `{{Front}}`, `{{Back}}`, `{{Question}}`)
+  - Unknown field placeholders are replaced with empty strings
+  
+Example using `{{fields}}`:
+```
+Please provide a clear and concise explanation for:
+{{fields}}
+```
 
-### **03_explanation_style**
-- `"definition_only"`  
-  - Only the definition / general concept.
-- `"definition_and_mechanism"`  
-  - Definition + brief mechanism (recommended).
-- `"full"`  
-  - Adds clinical notes and more detailed mechanism.
+Example using individual fields:
+```
+Question: {{Front}}
+Answer: {{Back}}
+Please explain why this answer is correct.
+```
 
-### **03_target_length_chars**
-- Approximate character target for the explanation.  
-- Range: **80–800**  
-- Default: **260**
+Example mixing both:
+```
+Card content:
+{{fields}}
+
+Focus on: {{Question}}
+```
+
+**Note:** The system prompt automatically enforces HTML-only output, so you don't need to specify that.
 
 ---
 
@@ -82,10 +96,6 @@ All settings can be adjusted in the Config screen.
 ### **04_append_separator**
 - Separator used when `"append"` mode is active.  
 - Default: `<hr>`.
-
-### **04_skip_if_exists**
-- Legacy setting for backward compatibility.  
-- If `"on_existing_behavior"` is set, this is ignored.
 
 ---
 
@@ -127,18 +137,14 @@ You may change this to any valid Qt shortcut, such as:
   "01_gemini_api_key": "",
   "01_gemini_model": "gemini-2.5-flash-lite",
 
-  "02_question_field": "Front",
-  "02_answer_field": "Back",
+  "02_input_fields": ["Front", "Back"],
   "02_explanation_field": "Explanation",
 
-  "03_language": "en",
-  "03_explanation_style": "definition_and_mechanism",
-  "03_target_length_chars": 260,
+  "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.\n\nNote: You can also use individual field placeholders like {{Front}} or {{Back}} instead of {{fields}}.",
 
   "04_on_existing_behavior": "append",
   "04_append_separator": "\n<hr>\n",
-  "04_skip_if_exists": true,
 
-  "05_max_notes_per_run": 5,
-  "05_review_shortcut": "Ctrl+Alt+L"
+  "05_max_notes_per_run": 50,
+  "05_review_shortcut": "Ctrl+Shift+L"
 }
