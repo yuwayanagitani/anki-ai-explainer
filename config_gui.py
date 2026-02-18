@@ -17,19 +17,13 @@ DEFAULT_CONFIG: AddonConfig = {
     "01_gemini_api_key": "",
     "01_gemini_model": "gemini-2.5-flash-lite",
 
-    "02_question_field": "Front",
-    "02_answer_field": "Back",
+    "02_input_fields": ["Front", "Back"],
     "02_explanation_field": "Explanation",
 
-    "03_language": "en",
-    "03_domain": "general",  
-    "03_audience": "general",
-    "03_explanation_style": "definition_and_mechanism",
-    "03_target_length_chars": 260,
+    "03_user_prompt": "Please provide a clear and concise explanation for the following content from an Anki card:\n\n{{fields}}\n\nProvide an explanation that helps understand the concept, its context, and why it's important. Return the explanation in HTML format only, without using markdown code fences or backticks.",
 
     "04_on_existing_behavior": "append",
     "04_append_separator": "\n<hr>\n",
-    "04_skip_if_exists": False,  # legacy (GUIでは同期だけする)
 
     "05_max_notes_per_run": 50,
     "05_review_shortcut": "Ctrl+Shift+L",
@@ -118,60 +112,71 @@ class ExplainerConfigDialog(QDialog):
         # --- Tab: Fields ---
         tab_fields = QWidget(self)
         self.tabs.addTab(tab_fields, "Fields")
-        form_f = QFormLayout(tab_fields)
+        lay_fields = QVBoxLayout(tab_fields)
 
-        self.q_field = QLineEdit()
-        self.a_field = QLineEdit()
+        # Input fields section
+        input_label = QLabel("Input fields (read in order, concatenated as {{fields}} placeholder):")
+        lay_fields.addWidget(input_label)
+
+        fields_hbox = QHBoxLayout()
+        
+        self.input_fields_list = QListWidget()
+        self.input_fields_list.setMinimumHeight(150)
+        fields_hbox.addWidget(self.input_fields_list)
+
+        # Buttons for managing input fields
+        fields_buttons = QVBoxLayout()
+        self.add_field_btn = QPushButton("Add")
+        self.remove_field_btn = QPushButton("Remove")
+        self.move_up_btn = QPushButton("Up")
+        self.move_down_btn = QPushButton("Down")
+        
+        fields_buttons.addWidget(self.add_field_btn)
+        fields_buttons.addWidget(self.remove_field_btn)
+        fields_buttons.addWidget(self.move_up_btn)
+        fields_buttons.addWidget(self.move_down_btn)
+        fields_buttons.addStretch()
+        
+        fields_hbox.addLayout(fields_buttons)
+        lay_fields.addLayout(fields_hbox)
+
+        # Explanation field
+        form_e = QFormLayout()
         self.e_field = QLineEdit()
-        for w in (self.q_field, self.a_field, self.e_field):
-            w.setMinimumWidth(520)
+        self.e_field.setMinimumWidth(520)
+        form_e.addRow("Explanation field (output)", self.e_field)
+        lay_fields.addLayout(form_e)
 
-        form_f.addRow("Question field", self.q_field)
-        form_f.addRow("Answer field", self.a_field)
-        form_f.addRow("Explanation field", self.e_field)
+        # Connect field buttons
+        self.add_field_btn.clicked.connect(self._on_add_field)
+        self.remove_field_btn.clicked.connect(self._on_remove_field)
+        self.move_up_btn.clicked.connect(self._on_move_up)
+        self.move_down_btn.clicked.connect(self._on_move_down)
 
-        # --- Tab: Output ---
-        tab_out = QWidget(self)
-        self.tabs.addTab(tab_out, "Output")
-        form_o = QFormLayout(tab_out)
+        # --- Tab: Prompt ---
+        tab_prompt = QWidget(self)
+        self.tabs.addTab(tab_prompt, "Prompt")
+        lay_prompt = QVBoxLayout(tab_prompt)
 
-        self.domain = QComboBox()
-        self.domain.addItem("Medical (medicine / biology / nursing)", "medical")
-        self.domain.addItem("General (non-medical topics)", "general")
-        form_o.addRow("Mode", self.domain)
+        prompt_label = QLabel(
+            "User prompt (use {{fields}} placeholder for field contents):"
+        )
+        lay_prompt.addWidget(prompt_label)
 
-        self.language = QComboBox()
+        self.user_prompt = QTextEdit()
+        self.user_prompt.setMinimumHeight(200)
+        self.user_prompt.setPlaceholderText(
+            "Enter your custom prompt here. Use {{fields}} to insert the concatenated field contents."
+        )
+        lay_prompt.addWidget(self.user_prompt)
 
-        # Common
-        self.language.addItem("Japanese (ja)", "ja")
-        self.language.addItem("English (en)", "en")
+        note_label = QLabel(
+            "Note: The add-on enforces HTML-only output. No need to specify that in your prompt."
+        )
+        note_label.setStyleSheet("color: gray; font-style: italic;")
+        lay_prompt.addWidget(note_label)
 
-        # Europe
-        self.language.addItem("German (de)", "de")
-        self.language.addItem("French (fr)", "fr")
-        self.language.addItem("Spanish (es)", "es")
-        self.language.addItem("Italian (it)", "it")
-        self.language.addItem("Portuguese (pt)", "pt")
-        self.language.addItem("Russian (ru)", "ru")
-
-        # Asia / Others
-        self.language.addItem("Chinese (zh)", "zh")
-        self.language.addItem("Korean (ko)", "ko")
-        self.language.addItem("Arabic (ar)", "ar")
-
-        form_o.addRow("Language", self.language)
-
-        self.style = QComboBox()
-        self.style.addItem("Definition only", "definition_only")
-        self.style.addItem("Definition + Mechanism", "definition_and_mechanism")
-        self.style.addItem("Full", "full")
-        form_o.addRow("Style", self.style)
-
-        self.target_len = QSpinBox()
-        self.target_len.setRange(80, 800)
-        form_o.addRow("Target length (chars)", self.target_len)
-
-        # --- Tab: Behavior / Batch ---
+        # --- Tab: Behavior ---
         tab_b = QWidget(self)
         self.tabs.addTab(tab_b, "Behavior")
         lay_b = QVBoxLayout(tab_b)
@@ -218,6 +223,42 @@ class ExplainerConfigDialog(QDialog):
         is_append = (self.on_exists.currentData() == "append")
         self.append_sep.setEnabled(is_append)
 
+    def _on_add_field(self) -> None:
+        text, ok = QInputDialog.getText(self, "Add Field", "Enter field name:")
+        if ok and text.strip():
+            field_name = text.strip()
+            # Check for duplicates
+            existing_fields = []
+            for i in range(self.input_fields_list.count()):
+                item = self.input_fields_list.item(i)
+                if item:
+                    existing_fields.append(item.text())
+            
+            if field_name in existing_fields:
+                showWarning(f"Field '{field_name}' is already in the list.")
+                return
+            
+            self.input_fields_list.addItem(field_name)
+
+    def _on_remove_field(self) -> None:
+        current_row = self.input_fields_list.currentRow()
+        if current_row >= 0:
+            self.input_fields_list.takeItem(current_row)
+
+    def _on_move_up(self) -> None:
+        current_row = self.input_fields_list.currentRow()
+        if current_row > 0:
+            item = self.input_fields_list.takeItem(current_row)
+            self.input_fields_list.insertItem(current_row - 1, item)
+            self.input_fields_list.setCurrentRow(current_row - 1)
+
+    def _on_move_down(self) -> None:
+        current_row = self.input_fields_list.currentRow()
+        if current_row >= 0 and current_row < self.input_fields_list.count() - 1:
+            item = self.input_fields_list.takeItem(current_row)
+            self.input_fields_list.insertItem(current_row + 1, item)
+            self.input_fields_list.setCurrentRow(current_row + 1)
+
     def _load_to_ui(self, cfg: AddonConfig) -> None:
         # Provider
         self._set_combo_by_data(self.provider, cfg.get("01_provider", "openai"))
@@ -227,18 +268,18 @@ class ExplainerConfigDialog(QDialog):
         self.gemini_model.setText(str(cfg.get("01_gemini_model", DEFAULT_CONFIG["01_gemini_model"])) or "")
 
         # Fields
-        self.q_field.setText(str(cfg.get("02_question_field", "Front")) or "Front")
-        self.a_field.setText(str(cfg.get("02_answer_field", "Back")) or "Back")
+        input_fields = cfg.get("02_input_fields", DEFAULT_CONFIG["02_input_fields"])
+        if not isinstance(input_fields, list):
+            input_fields = ["Front", "Back"]
+        self.input_fields_list.clear()
+        for field in input_fields:
+            self.input_fields_list.addItem(str(field))
+        
         self.e_field.setText(str(cfg.get("02_explanation_field", "Explanation")) or "Explanation")
 
-        # Output
-        # new key preferred; fallback to legacy key
-        dom = cfg.get("03_domain", None) or cfg.get("03_audience", "general")
-        self._set_combo_by_data(self.domain, dom)
-
-        self._set_combo_by_data(self.language, cfg.get("03_language", "ja"))
-        self._set_combo_by_data(self.style, cfg.get("03_explanation_style", "definition_and_mechanism"))
-        self.target_len.setValue(int(cfg.get("03_target_length_chars", 260) or 260))
+        # Prompt
+        user_prompt = cfg.get("03_user_prompt", DEFAULT_CONFIG["03_user_prompt"])
+        self.user_prompt.setPlainText(str(user_prompt))
 
         # Behavior
         self._set_combo_by_data(self.on_exists, cfg.get("04_on_existing_behavior", "skip"))
@@ -262,22 +303,20 @@ class ExplainerConfigDialog(QDialog):
         cfg["01_gemini_api_key"] = self.gemini_key.text().strip()
         cfg["01_gemini_model"] = self.gemini_model.text().strip() or DEFAULT_CONFIG["01_gemini_model"]
 
-        cfg["02_question_field"] = self.q_field.text().strip() or "Front"
-        cfg["02_answer_field"] = self.a_field.text().strip() or "Back"
+        # Collect input fields from list
+        input_fields = []
+        for i in range(self.input_fields_list.count()):
+            item = self.input_fields_list.item(i)
+            if item:
+                input_fields.append(item.text())
+        cfg["02_input_fields"] = input_fields if input_fields else ["Front", "Back"]
         cfg["02_explanation_field"] = self.e_field.text().strip() or "Explanation"
 
-        cfg["03_language"] = self.language.currentData()
-        cfg["03_domain"] = self.domain.currentData()
-        # legacy sync (safe if user downgrades to an older add-on build)
-        cfg["03_audience"] = cfg["03_domain"]
-        cfg["03_explanation_style"] = self.style.currentData()
-        cfg["03_target_length_chars"] = int(self.target_len.value())
+        cfg["03_user_prompt"] = self.user_prompt.toPlainText()
 
         cfg["04_on_existing_behavior"] = self.on_exists.currentData()
         cfg["04_append_separator"] = self.append_sep.toPlainText()
 
-        # legacy key: GUI側で “同期だけ” して矛盾を減らす
-        cfg["04_skip_if_exists"] = (cfg["04_on_existing_behavior"] == "skip")
 
         cfg["05_max_notes_per_run"] = int(self.max_notes.value())
 
