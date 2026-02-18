@@ -115,7 +115,7 @@ class ExplainerConfigDialog(QDialog):
         lay_fields = QVBoxLayout(tab_fields)
 
         # Input fields section
-        input_label = QLabel("Input fields (read in order, concatenated as {{fields}} placeholder):")
+        input_label = QLabel("Input fields (read in order, concatenated as {{fields}} placeholder, also available as individual {{FieldName}} placeholders):")
         lay_fields.addWidget(input_label)
 
         fields_hbox = QHBoxLayout()
@@ -159,14 +159,15 @@ class ExplainerConfigDialog(QDialog):
         lay_prompt = QVBoxLayout(tab_prompt)
 
         prompt_label = QLabel(
-            "User prompt (use {{fields}} placeholder for field contents):"
+            "User prompt (use {{fields}} for all field contents, or {{FieldName}} for individual fields like {{Front}}, {{Back}}):"
         )
         lay_prompt.addWidget(prompt_label)
 
         self.user_prompt = QTextEdit()
         self.user_prompt.setMinimumHeight(200)
         self.user_prompt.setPlaceholderText(
-            "Enter your custom prompt here. Use {{fields}} to insert the concatenated field contents."
+            "Enter your custom prompt here. Use {{fields}} to insert all field contents, "
+            "or {{FieldName}} for individual fields (e.g., {{Question}}, {{Answer}})."
         )
         lay_prompt.addWidget(self.user_prompt)
 
