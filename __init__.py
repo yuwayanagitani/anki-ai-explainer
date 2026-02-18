@@ -61,7 +61,6 @@ def _build_prompts(fields_text: str, fields_map: dict[str, str], cfg: AddonConfi
     
     # Substitute individual {{FieldName}} placeholders with their values
     # Use regex to find all {{...}} patterns
-    import re
     placeholder_pattern = re.compile(r'\{\{([^}]+)\}\}')
     
     def replace_placeholder(match):
